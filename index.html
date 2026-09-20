@@ -54,6 +54,7 @@ body{font-family:var(--display);color:var(--bone);position:fixed;inset:0}
 #thrM{position:absolute;left:-5px;width:14px;height:5px;background:var(--mustard);bottom:50%;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 #thr b{position:absolute;right:10px;font-weight:500;font-size:13px;opacity:.6}
 #thr b.f{top:-6px}#thr b.s{bottom:-6px}
+#map{position:fixed;left:10px;top:30%;height:40%;width:16px;pointer-events:none}
 #flash{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:radial-gradient(ellipse at center,rgba(226,72,58,0) 35%,rgba(226,72,58,.75) 100%)}
 
@@ -62,9 +63,9 @@ body{font-family:var(--display);color:var(--bone);position:fixed;inset:0}
   background:linear-gradient(180deg,rgba(14,17,32,.2) 0%,rgba(14,17,32,.55) 40%,rgba(14,17,32,.94) 100%);
   transition:opacity .35s}
 .ov.hide{opacity:0;visibility:hidden}
-.ov h1{font-weight:800;font-size:clamp(64px,22vw,104px);line-height:.82;margin:0 0 18px;letter-spacing:-2px}
+.ov h1{font-weight:800;font-size:clamp(56px,19vw,84px);line-height:.82;margin:0 0 14px;letter-spacing:-2px}
 .ov h1 em{font-style:normal;display:block;color:var(--mustard)}
-.ov p{font-weight:500;font-size:21px;line-height:1.2;margin:0 0 10px;max-width:22em}
+.ov p{font-weight:500;font-size:18px;line-height:1.2;margin:0 0 8px;max-width:22em}
 .ov p b{font-weight:800;color:var(--mustard)}
 .ov .go{margin-top:16px;font-weight:800;font-size:26px;animation:pulse 1.4s ease-in-out infinite}
 #tiltBtn{pointer-events:auto;align-self:flex-start;margin-top:14px;font:800 22px var(--display);color:var(--ink);background:var(--mustard);border:0;border-radius:0;padding:12px 18px;transform:skewX(-8deg);touch-action:manipulation}
@@ -94,6 +95,7 @@ body{font-family:var(--display);color:var(--bone);position:fixed;inset:0}
   </div>
 </div>
 <div id="thr"><b class="f">fast</b><b class="s">slow</b><div id="thrM"></div></div>
+<canvas id="map"></canvas>
 <div id="toast"></div>
 <div id="flash"></div>
 
@@ -101,6 +103,7 @@ body{font-family:var(--display);color:var(--bone);position:fixed;inset:0}
   <h1>Population<em>100</em></h1>
   <p><b>Drag left and right</b> to lean the bike. Drag too far and the tyres let go. <b>Hold higher</b> on the screen to ride faster, lower to slow down.</p>
   <p><b>Flick down</b> to fire straight ahead. The blowback kicks the front wheel up, and rapid fire stacks the kicks until you flip.</p>
+  <p><b>All 100 live on this one street</b> and stay where you left them. Miss any and you must slow down, turn round and go back. The map on the left shows who is left.</p>
   <p><b>Flick down</b> again to get up after a fall. Don't let them reach you on the ground.</p>
   <div class="go">Touch and hold to ride</div>
   <button id="tiltBtn" class="btn" type="button"><span>Or ride with tilt steering</span></button>
@@ -226,6 +229,7 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(250,16,14),new THREE.MeshBasic
 const moon=new THREE.Mesh(new THREE.CircleGeometry(7,24),Bm(0xe9dcc4,{fog:false}));scene.add(moon);
 const moonHalo=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshBasicMaterial({map:GLOW,color:0xd9b89a,transparent:true,opacity:.35,fog:false,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(moonHalo);
 
+const ROADEND=1000; // the street runs from z=0 to z=-1000 with a barricade at each end
 const ROADLEN=480;
 const road=new THREE.Mesh(new THREE.PlaneGeometry(12,ROADLEN),L(0xffffff,{map:roadTex()}));road.rotation.x=-Math.PI/2;scene.add(road);
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(400,ROADLEN),L(0xffffff,{map:grassTex()}));grass.rotation.x=-Math.PI/2;grass.position.y=-0.03;scene.add(grass);
@@ -251,6 +255,12 @@ for(let i=0;i<NSLOT;i++){
   let car=null;if(i>1&&Math.random()<.4){car=makeCar();car.position.set((Math.random()<.5?-1:1)*4.75,0,rand(-5,5));car.rotation.y=rand(-.06,.06);g.add(car);}
   g.userData.car=car;scene.add(g);slots.push(g);
 }
+const barMat=L(0x9a958c),stripeA=L(0xd8452b),stripeB=L(0xe9e4d6),amber=Bm(0xffa530,{fog:false});
+function barricade(z,face){const g=new THREE.Group();g.position.z=z;
+  for(let i=-5;i<=5;i++){const b=box(barMat,1.9,.9,.6,i*2,.45,0,g);b.rotation.y=rand(-.08,.08);box(i%2?stripeA:stripeB,1.9,.28,.08,i*2,1.25,face*.2,g);if(i%2===0)box(amber,.16,.16,.16,i*2,1.5,face*.2,g);}
+  const c1=makeCar();c1.position.set(-2.6,0,-face*2.4);c1.rotation.y=1.3;g.add(c1);const c2=makeCar();c2.position.set(3,0,-face*2.8);c2.rotation.y=-1.1;g.add(c2);
+  scene.add(g);return g;}
+barricade(24,-1);barricade(-ROADEND-24,1);
 function wrapWorld(pz){
   const snap=Math.round(pz/24)*24;road.position.z=snap;grass.position.z=Math.round(pz/16)*16;fences[0].position.z=fences[1].position.z=snap;
   for(const g of slots)g.position.z=g.userData.z0+Math.round((pz-g.userData.z0)/LEN)*LEN;
@@ -334,20 +344,24 @@ function makePerson(type){
 }
 let people=[];
 function roadDir(){return Math.cos(bike.psi)>=0?-1:1;}
-function placeAhead(p,first){const d=roadDir();p.z=bike.z+d*rand(first?45:72,first?100:118);p.x=Math.random()<.82?rand(-3.6,3.6):rand(-7.5,7.5);if(p.type==='lurker'){p.awake=false;}p.g.position.set(p.x,0,p.z);}
-function pickType(){const k=G.kills,w={shambler:1,runner:k>4?Math.min(.6,k/60):0,brute:k>15?Math.min(.35,(k-10)/100):0,lurker:k>8?Math.min(.4,(k-4)/80):0};let tot=0;for(const t in w)tot+=w[t];let r=Math.random()*tot;for(const t in w){r-=w[t];if(r<=0)return t;}return'shambler';}
-function spawn(first){const p=makePerson(pickType());placeAhead(p,first);scene.add(p.g);people.push(p);}
-function livingCount(){let n=0;for(const p of people)if(p.state!=='dead')n++;return n;}
+function typeFor(f){const w={shambler:1,runner:f>.05?Math.min(.6,f*1.6):0,brute:f>.15?Math.min(.35,f*.9):0,lurker:f>.08?Math.min(.4,f*1.2):0};let tot=0;for(const t in w)tot+=w[t];let r=Math.random()*tot;for(const t in w){r-=w[t];if(r<=0)return t;}return'shambler';}
+function populate(){
+  // everyone who lives here, each with a home spot that is remembered for the whole game
+  for(let i=0;i<100;i++){const f=i/100,p=makePerson(typeFor(f));p.z=-(55+f*(ROADEND-75))+rand(-6,6);p.x=Math.random()<.8?rand(-3.8,3.8):rand(-7.5,7.5);p.awake=false;p.shown=false;p.g.position.set(p.x,0,p.z);people.push(p);}
+}
+function show(p,on){if(p.shown===on)return;p.shown=on;if(on)scene.add(p.g);else scene.remove(p.g);}
 function knockDown(p,dur,px,pz){if(p.state==='dead')return;p.state='stun';p.t=dur;p.x+=px;p.z+=pz;}
 function updatePeople(dt){
   const dir=roadDir(),downed=(G.state==='down'||G.state==='rising');
   for(let i=people.length-1;i>=0;i--){
     const p=people[i];let dx=bike.x-p.x,dz=bike.z-p.z;const dist=Math.hypot(dx,dz)||1;
-    if(p.state==='dead'){p.t+=dt;p.fall=Math.min(1,p.fall+dt*3.2);if(p.t>2.2)p.g.position.y-=dt*.5;if(p.t>4){scene.remove(p.g);people.splice(i,1);continue;}}
+    if(dist>175&&p.state!=='dead'){show(p,false);if(p.state==='stun'){p.state='walk';p.fall=0;}p.awake=false;continue;}
+    show(p,true);
+    if(p.state==='dead'){p.t+=dt;p.fall=Math.min(1,p.fall+dt*3.2);if(p.t>2.2)p.g.position.y-=dt*.5;if(p.t>4){show(p,false);people.splice(i,1);continue;}}
     else if(p.state==='stun'){p.t-=dt;p.fall=p.t>.7?Math.min(1,p.fall+dt*4):Math.max(0,p.fall-dt*1.6);if(p.t<=0&&p.fall<=0)p.state='walk';}
     else{
-      if((p.z-bike.z)*dir<-32){placeAhead(p,false);continue;}
-      if(!p.awake&&dist<30)p.awake=true;
+      // they only notice you nearby, and lose interest (staying where they stopped) once you are far away
+      if(!p.awake&&dist<(p.type==='lurker'?30:48))p.awake=true;else if(p.awake&&dist>80)p.awake=false;
       p.stagger=Math.max(0,p.stagger-dt);p.grabCd=Math.max(0,p.grabCd-dt);
       let sp=p.awake&&p.stagger<=0?p.T.speed:0;
       if(sp>0){let ux=dx/dist,uz=dz/dist;if(p.type==='runner'&&dist>9){const zz=Math.sin(p.ph*.35)*.7*p.side;const nx=ux-uz*zz,nz=uz+ux*zz,n=Math.hypot(nx,nz);ux=nx/n;uz=nz/n;}p.x+=ux*sp*dt;p.z+=uz*sp*dt;p.x=clamp(p.x,-9,9);p.ph+=sp*dt*(p.type==='brute'?2.2:3.2);}
@@ -375,8 +389,6 @@ function updatePeople(dt){
     p.body.rotation.x=-Math.PI/2*(1-Math.pow(1-p.fall,2));
     p.g.position.x=p.x;p.g.position.z=p.z;
   }
-  // keep the street stocked, but never more people than the population that is left
-  if(G.state!=='title'&&G.state!=='won'){const want=Math.min(5+Math.floor(G.kills/8),14,100-G.kills);G.spawnT-=dt;if(livingCount()<want&&G.spawnT<=0){spawn(false);G.spawnT=.35;}}
 }
 function findTarget(){
   const fx=-Math.sin(bike.psi),fz=-Math.cos(bike.psi);let best=null,bd=1e9;
@@ -421,19 +433,20 @@ function startGame(){
   popN.textContent='100';setLives();setToast(null);
   $('title').classList.add('hide');$('end').classList.add('hide');
   input.ax=input.x;input.armed=false;if(tilt.on)tiltCentre();
-  for(let i=0;i<5;i++)spawn(true);
+  populate();
 }
-const WHY={lowside:'The tyres let go',loopout:'Looped out',knocked:'Knocked off',fence:'Into the fence',car:'Into a parked car'};
+const WHY={lowside:'The tyres let go',loopout:'Looped out',knocked:'Knocked off',fence:'Into the fence',barrier:'Road closed',car:'Into a parked car'};
 function crash(why){
   if(G.state!=='ride')return;
-  G.state='down';G.falls++;G.downT=0;G.slide=why==='car'?0:bike.v*(why==='fence'?.25:.8);G.shake=.6;
+  G.state='down';G.falls++;G.downT=0;G.slide=(why==='car'||why==='barrier')?0:bike.v*(why==='fence'?.25:.8);G.shake=.6;
   G.fallDir=why==='lowside'?Math.sign(bike.phi)||1:(Math.abs(bike.phi)>.05?Math.sign(bike.phi):(Math.random()<.5?-1:1));
   G.why=why;bike.v=0;sfx.crash();setToast(WHY[why],why==='lowside'?'too much lean for the grip':why==='loopout'?'too much recoil, too fast':'');
 }
 function hurt(){G.lives--;setLives();G.shake=.5;flash.style.transition='none';flash.style.opacity='1';requestAnimationFrame(()=>{flash.style.transition='opacity .7s';flash.style.opacity='0';});sfx.hurt();if(G.lives<=0)endGame(false);}
 function rise(){
   G.state='rising';G.riseT=0;G.riseX0=bike.x;G.risePsi0=bike.psi;
-  G.riseX=clamp(bike.x,-2.8,2.8);G.risePsi=Math.round(bike.psi/Math.PI)*Math.PI;setToast(null);
+  G.riseX=clamp(bike.x,-2.8,2.8);G.riseZ0=bike.z;G.riseZ=clamp(bike.z,-ROADEND-14,14);
+  const tp=Math.PI*2;if(bike.z>2)G.risePsi=Math.round(bike.psi/tp)*tp;else if(bike.z<-ROADEND-2)G.risePsi=Math.round((bike.psi-Math.PI)/tp)*tp+Math.PI;else G.risePsi=Math.round(bike.psi/Math.PI)*Math.PI;setToast(null);
 }
 function endGame(won){
   G.state=won?'won':'dead';G.endT=0;setToast(null);if(won)sfx.win();
@@ -523,6 +536,20 @@ const keys={};
 window.addEventListener('keydown',e=>{if(e.repeat)return;keys[e.code]=1;if(e.code==='Space'||e.code==='ArrowDown'){e.preventDefault();swipeDown();}});
 window.addEventListener('keyup',e=>{keys[e.code]=0;});
 
+// ---------------------------------------------------------------- street map: who is left, and where
+const mapC=$('map'),mapX=mapC.getContext('2d');let mapT=0;
+function drawMap(){
+  const w=mapC.clientWidth,h=mapC.clientHeight;if(!w||!h)return;const d=Math.min(window.devicePixelRatio||1,2);
+  if(mapC.width!==Math.round(w*d)||mapC.height!==Math.round(h*d)){mapC.width=Math.round(w*d);mapC.height=Math.round(h*d);}
+  mapX.setTransform(d,0,0,d,0,0);mapX.clearRect(0,0,w,h);
+  const Y=z=>6+(h-12)*(1-clamp(-z/ROADEND,-.02,1.02));
+  mapX.fillStyle='rgba(14,17,32,.45)';mapX.fillRect(2,0,w-4,h);mapX.fillStyle='rgba(233,228,214,.5)';mapX.fillRect(2,Y(-ROADEND-24)-1,w-4,2);mapX.fillRect(2,Y(24)-1,w-4,2);
+  let ahead=0;const dir=roadDir();
+  for(const p of people){if(p.state==='dead')continue;if((p.z-bike.z)*dir>-2)ahead++;mapX.fillStyle=p.awake?'#e2483a':'#e9e4d6';const r=p.type==='brute'?2:1.4;mapX.fillRect(w/2+p.x/9*(w/2-4)-r,Y(p.z)-r,r*2,r*2);}
+  const py=Y(bike.z),px=w/2+bike.x/9*(w/2-4),u=dir<0?-1:1;mapX.fillStyle='#e0aa25';mapX.beginPath();mapX.moveTo(px,py+u*6);mapX.lineTo(px-4.5,py-u*4);mapX.lineTo(px+4.5,py-u*4);mapX.closePath();mapX.fill();
+  const left=100-G.kills;$('popL').textContent=(G.state==='ride'&&left>0&&ahead===0)?'all behind you \u2014 turn round':'population';
+}
+
 // ---------------------------------------------------------------- loop
 const _cam=new THREE.Vector3(),_look=new THREE.Vector3();
 let last=performance.now();
@@ -541,6 +568,7 @@ function tick(now){
     for(let i=0;i<n&&!res;i++){res=stepBike(bike,s,h);if(bike.landed>.6){sfx.land();G.shake=Math.max(G.shake,.1);}}
     if(bike.slip){G.screechT-=dt;if(G.screechT<=0){sfx.screech();G.screechT=.12;}}
     if(!res&&Math.abs(bike.x)>9.3)res='fence';
+    if(!res&&(bike.z>22.5||bike.z<-ROADEND-22.5))res='barrier';
     if(!res)for(const g of slots){const c=g.userData.car;if(!c)continue;if(Math.abs(bike.x-c.position.x)<1.15&&Math.abs(bike.z-(g.position.z+c.position.z))<2.6){res='car';break;}}
     if(res)crash(res);
   }else if(G.state==='down'){
@@ -550,7 +578,7 @@ function tick(now){
     if(G.downT>.9&&G.slide<.5&&toast.className.indexOf('pulse')<0)setToast(WHY[G.why],'flick down to get up',true);
   }else if(G.state==='rising'){
     G.time+=dt;G.riseT+=dt;const k=Math.min(1,G.riseT/.65),e=k*k*(3-2*k);
-    bike.phi=G.fallDir*1.47*(1-e);bike.x=lerp(G.riseX0,G.riseX,e);bike.psi=lerp(G.risePsi0,G.risePsi,e);bike.delta=0;
+    bike.phi=G.fallDir*1.47*(1-e);bike.x=lerp(G.riseX0,G.riseX,e);bike.z=lerp(G.riseZ0,G.riseZ,e);bike.psi=lerp(G.risePsi0,G.risePsi,e);bike.delta=0;
     if(k>=1){const x=bike.x,z=bike.z,psi=bike.psi;bike=newBike();bike.x=x;bike.z=z;bike.psi=psi;bike.v=1.2;G.state='ride';G.invuln=2;input.ax=input.x;}
   }else{G.endT+=dt;if(G.state==='title'){bike.z-=4*dt;crankA+=3*dt;}}
 
@@ -587,6 +615,7 @@ function tick(now){
   gauge.className=bike.slip&&riding?'slip':'';
   if(AU.windG){AU.windG.gain.value=riding?Math.min(.22,bike.v*.018):0;AU.windF.frequency.value=350+bike.v*60;}
 
+  mapT-=dt;if(mapT<=0){mapT=.1;drawMap();}
   renderer.render(scene,camera);
 }
 wrapWorld(0);poseRider(bike,0,false);
